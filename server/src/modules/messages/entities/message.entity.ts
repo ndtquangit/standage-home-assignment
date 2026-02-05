@@ -13,6 +13,7 @@ import { User } from '../../users/entities/user.entity';
 import { Room } from '../../rooms/entities/room.entity';
 
 @Entity('messages')
+@Index(['roomId', 'createdAt']) // Composite index for paginated message queries
 export class Message {
   @PrimaryGeneratedColumn('uuid')
   id: string;

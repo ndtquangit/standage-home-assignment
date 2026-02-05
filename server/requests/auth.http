@@ -1,0 +1,85 @@
+### Chat API - Authentication Endpoints
+### Use VS Code REST Client extension to run these requests
+### Variables are shared across requests in the same file
+
+@baseUrl = http://localhost:3000/api
+@contentType = application/json
+
+### ============================================
+### LOGIN - Create or login with a nickname
+### ============================================
+
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "nickname": "testuser"
+}
+
+### Save token from login response
+@token = {{login.response.body.accessToken}}
+
+### ============================================
+### GET CURRENT USER - Verify authentication
+### ============================================
+
+# @name me
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+### ============================================
+### LOGOUT - Invalidate session
+### ============================================
+
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{token}}
+
+### ============================================
+### LOGIN SECOND USER - For multi-user testing
+### ============================================
+
+# @name login2
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "nickname": "anotheruser"
+}
+
+### Save second user token
+@token2 = {{login2.response.body.accessToken}}
+
+### ============================================
+### VERIFY SECOND USER
+### ============================================
+
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token2}}
+
+### ============================================
+### ERROR CASES
+### ============================================
+
+### Missing nickname (should fail)
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "nickname": ""
+}
+
+### Nickname too long (should fail - max 50 chars)
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "nickname": "this_is_a_very_long_nickname_that_exceeds_the_maximum_allowed_length"
+}
+
+### Missing auth header (should fail)
+GET {{baseUrl}}/auth/me
+
+### Invalid token (should fail)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer invalid_token_here

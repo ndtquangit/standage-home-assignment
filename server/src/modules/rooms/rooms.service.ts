@@ -42,21 +42,32 @@ export class RoomsService {
   }
 
   async findAll(): Promise<RoomResponseDto[]> {
-    const rooms = await this.roomsRepository.find({
-      order: { createdAt: 'DESC' },
-    });
+    const roomsWithCounts = await this.roomsRepository
+      .createQueryBuilder('room')
+      .leftJoin(
+        'room_participants',
+        'participant',
+        'participant.room_id = room.id AND participant.left_at IS NULL',
+      )
+      .select([
+        'room.id AS id',
+        'room.name AS name',
+        'room.creator_id AS "creatorId"',
+        'room.created_at AS "createdAt"',
+        'COUNT(participant.id)::int AS "participantCount"',
+      ])
+      .where('room.deleted_at IS NULL')
+      .groupBy('room.id')
+      .orderBy('room.created_at', 'DESC')
+      .getRawMany();
 
-    // Get participant counts
-    const roomsWithCounts = await Promise.all(
-      rooms.map(async (room) => {
-        const count = await this.participantsRepository.count({
-          where: { roomId: room.id, leftAt: IsNull() },
-        });
-        return { ...this.toRoomResponse(room), participantCount: count };
-      }),
-    );
-
-    return roomsWithCounts;
+    return roomsWithCounts.map((room) => ({
+      id: room.id,
+      name: room.name,
+      creatorId: room.creatorId,
+      createdAt: room.createdAt,
+      participantCount: room.participantCount || 0,
+    }));
   }
 
   async findById(id: string): Promise<Room | null> {

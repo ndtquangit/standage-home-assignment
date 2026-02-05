@@ -1,0 +1,208 @@
+### Chat API - Message Endpoints
+### Use VS Code REST Client extension to run these requests
+### Tests the critical EDIT CONSTRAINT business rule
+
+@baseUrl = http://localhost:3000/api
+@contentType = application/json
+
+### ============================================
+### SETUP: Login two users and create a room
+### ============================================
+
+# @name loginUser1
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "nickname": "alice"
+}
+
+@user1Token = {{loginUser1.response.body.accessToken}}
+
+# @name loginUser2
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "nickname": "bob"
+}
+
+@user2Token = {{loginUser2.response.body.accessToken}}
+
+### Create a room for testing
+# @name createRoom
+POST {{baseUrl}}/rooms
+Authorization: Bearer {{user1Token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Message Test Room"
+}
+
+@roomId = {{createRoom.response.body.id}}
+
+### User2 joins the room
+POST {{baseUrl}}/rooms/{{roomId}}/join
+Authorization: Bearer {{user2Token}}
+
+### ============================================
+### SEND MESSAGES
+### ============================================
+
+# @name sendMessage1
+POST {{baseUrl}}/rooms/{{roomId}}/messages
+Authorization: Bearer {{user1Token}}
+Content-Type: {{contentType}}
+
+{
+  "content": "Hello from Alice!"
+}
+
+@message1Id = {{sendMessage1.response.body.id}}
+
+# @name sendMessage2
+POST {{baseUrl}}/rooms/{{roomId}}/messages
+Authorization: Bearer {{user1Token}}
+Content-Type: {{contentType}}
+
+{
+  "content": "Another message from Alice"
+}
+
+@message2Id = {{sendMessage2.response.body.id}}
+
+### ============================================
+### GET MESSAGES (with pagination)
+### ============================================
+
+### Get first page of messages
+# @name getMessages
+GET {{baseUrl}}/rooms/{{roomId}}/messages?limit=10
+Authorization: Bearer {{user1Token}}
+
+### Get next page using cursor
+@cursor = {{getMessages.response.body.nextCursor}}
+
+GET {{baseUrl}}/rooms/{{roomId}}/messages?limit=10&cursor={{cursor}}
+Authorization: Bearer {{user1Token}}
+
+### ============================================
+### EDIT MESSAGE - SUCCESS CASE
+### User can edit their LAST message if no one else sent after
+### ============================================
+
+### Edit last message (should succeed - it's user's last message)
+PATCH {{baseUrl}}/rooms/{{roomId}}/messages/{{message2Id}}
+Authorization: Bearer {{user1Token}}
+Content-Type: {{contentType}}
+
+{
+  "content": "Edited: Another message from Alice"
+}
+
+### ============================================
+### EDIT MESSAGE - FAILURE CASES (Edit Constraint)
+### ============================================
+
+### Try to edit older message (should FAIL - not the last message)
+PATCH {{baseUrl}}/rooms/{{roomId}}/messages/{{message1Id}}
+Authorization: Bearer {{user1Token}}
+Content-Type: {{contentType}}
+
+{
+  "content": "Try to edit older message"
+}
+
+### Now Bob sends a message
+# @name bobMessage
+POST {{baseUrl}}/rooms/{{roomId}}/messages
+Authorization: Bearer {{user2Token}}
+Content-Type: {{contentType}}
+
+{
+  "content": "Hello from Bob!"
+}
+
+@bobMessageId = {{bobMessage.response.body.id}}
+
+### Alice tries to edit her last message AFTER Bob sent one
+### This should FAIL - someone else sent a message after
+PATCH {{baseUrl}}/rooms/{{roomId}}/messages/{{message2Id}}
+Authorization: Bearer {{user1Token}}
+Content-Type: {{contentType}}
+
+{
+  "content": "Alice tries to edit after Bob sent message - SHOULD FAIL"
+}
+
+### Bob CAN edit his message (it's his last, no one sent after)
+PATCH {{baseUrl}}/rooms/{{roomId}}/messages/{{bobMessageId}}
+Authorization: Bearer {{user2Token}}
+Content-Type: {{contentType}}
+
+{
+  "content": "Edited: Hello from Bob!"
+}
+
+### ============================================
+### DELETE MESSAGE
+### ============================================
+
+### Send a message to delete
+# @name messageToDelete
+POST {{baseUrl}}/rooms/{{roomId}}/messages
+Authorization: Bearer {{user1Token}}
+Content-Type: {{contentType}}
+
+{
+  "content": "This message will be deleted"
+}
+
+@deleteMessageId = {{messageToDelete.response.body.id}}
+
+### Delete the message
+DELETE {{baseUrl}}/rooms/{{roomId}}/messages/{{deleteMessageId}}
+Authorization: Bearer {{user1Token}}
+
+### ============================================
+### ERROR CASES
+### ============================================
+
+### Send empty message (should fail)
+POST {{baseUrl}}/rooms/{{roomId}}/messages
+Authorization: Bearer {{user1Token}}
+Content-Type: {{contentType}}
+
+{
+  "content": ""
+}
+
+### Send message to non-existent room (should fail - 404)
+POST {{baseUrl}}/rooms/00000000-0000-0000-0000-000000000000/messages
+Authorization: Bearer {{user1Token}}
+Content-Type: {{contentType}}
+
+{
+  "content": "Message to nowhere"
+}
+
+### Edit someone else's message (should fail - 403)
+PATCH {{baseUrl}}/rooms/{{roomId}}/messages/{{bobMessageId}}
+Authorization: Bearer {{user1Token}}
+Content-Type: {{contentType}}
+
+{
+  "content": "Alice tries to edit Bob's message"
+}
+
+### Delete someone else's message (should fail - 403)
+DELETE {{baseUrl}}/rooms/{{roomId}}/messages/{{bobMessageId}}
+Authorization: Bearer {{user1Token}}
+
+### ============================================
+### VERIFY FINAL STATE
+### ============================================
+
+### Get all messages to see final state
+GET {{baseUrl}}/rooms/{{roomId}}/messages?limit=50
+Authorization: Bearer {{user1Token}}

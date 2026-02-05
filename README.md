@@ -274,6 +274,71 @@ cd client && npm run build
 8. **Cursor-based pagination:** Messages fetched newest-first with cursor for infinite scroll
 9. **No file uploads:** Text messages only (for simplicity)
 
+## API Testing with HTTP Files
+
+The `server/requests/` directory contains `.http` files for testing the API using the VS Code REST Client extension.
+
+### Setup
+1. Install the [REST Client](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) extension in VS Code
+2. Open any `.http` file in the `server/requests/` directory
+3. Click "Send Request" above any request to execute it
+
+### Available Test Files
+- **auth.http** - Authentication flow (login, logout, me)
+- **rooms.http** - Room CRUD operations (create, join, leave, delete)
+- **messages.http** - Messaging with edit constraint testing
+
+The `messages.http` file includes comprehensive tests for the **message edit constraint** business rule:
+- Editing own last message (should succeed)
+- Editing older messages (should fail)
+- Editing after another user sent a message (should fail)
+
+## Known Limitations & Trade-offs
+
+This section documents intentional design decisions and their trade-offs.
+
+### 1. Presence Tracking Race Condition
+- **Issue:** Multiple simultaneous connections from the same user could cause race conditions in online/offline tracking
+- **Trade-off:** Simplicity vs. distributed locking
+- **Current approach:** Acceptable for single-instance deployment
+- **Production fix:** Use Redis distributed locks for multi-instance deployment
+
+### 2. WebSocket Gateway Size
+- **Issue:** The `ChatGateway` class (~380 lines) handles multiple responsibilities (presence, rooms, messages, typing)
+- **Trade-off:** Rapid development vs. Single Responsibility Principle
+- **Current approach:** Acceptable for prototype; all related real-time logic in one place
+- **Production fix:** Extract into `PresenceService`, `RoomEventService`, `MessageEventService`
+
+### 3. Database Synchronization
+- **Issue:** Using TypeORM `synchronize: true` in development instead of migrations
+- **Trade-off:** Development speed vs. production safety
+- **Current approach:** Schema auto-syncs in development; disabled in production
+- **Production fix:** Generate and use database migrations
+
+### 4. Session Token Storage
+- **Issue:** Full JWT token stored in database for session validation
+- **Trade-off:** Simple invalidation vs. storage overhead
+- **Current approach:** Enables logout by clearing stored token
+- **Production fix:** Use Redis for session blacklist/revocation list
+
+### 5. Single Instance Architecture
+- **Issue:** No horizontal scaling support (no Redis adapter for Socket.IO)
+- **Trade-off:** Simplicity vs. scalability
+- **Current approach:** Single server instance handles all connections
+- **Production fix:** Add Redis adapter for multi-instance WebSocket scaling
+
+### What Would Change for Production
+
+| Concern | Current | Production |
+|---------|---------|------------|
+| Secrets | Dev defaults with production guards | Secrets manager (Vault, AWS Secrets) |
+| Scaling | Single instance | Kubernetes + Redis adapter |
+| Database | TypeORM sync | Versioned migrations |
+| Logging | Console logger | Structured logging (Winston/Pino) |
+| Monitoring | None | APM (DataDog, New Relic) |
+| Rate limiting | None | @nestjs/throttler |
+| Caching | None | Redis cache layer |
+
 ## License
 
 This project is created as a home assignment.

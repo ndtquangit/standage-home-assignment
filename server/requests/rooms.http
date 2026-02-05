@@ -1,0 +1,150 @@
+### Chat API - Room Endpoints
+### Use VS Code REST Client extension to run these requests
+### Run auth.http first to get tokens
+
+@baseUrl = http://localhost:3000/api
+@contentType = application/json
+
+### ============================================
+### SETUP: Login first to get tokens
+### ============================================
+
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "nickname": "roomcreator"
+}
+
+### Save creator token
+@creatorToken = {{login.response.body.accessToken}}
+
+# @name login2
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "nickname": "roomjoiner"
+}
+
+### Save joiner token
+@joinerToken = {{login2.response.body.accessToken}}
+
+### ============================================
+### CREATE ROOM
+### ============================================
+
+# @name createRoom
+POST {{baseUrl}}/rooms
+Authorization: Bearer {{creatorToken}}
+Content-Type: {{contentType}}
+
+{
+  "name": "General Discussion"
+}
+
+### Save room ID
+@roomId = {{createRoom.response.body.id}}
+
+### ============================================
+### LIST ALL ROOMS
+### ============================================
+
+GET {{baseUrl}}/rooms
+Authorization: Bearer {{creatorToken}}
+
+### ============================================
+### GET ROOM DETAILS (includes participants)
+### ============================================
+
+GET {{baseUrl}}/rooms/{{roomId}}
+Authorization: Bearer {{creatorToken}}
+
+### ============================================
+### JOIN ROOM (as second user)
+### ============================================
+
+POST {{baseUrl}}/rooms/{{roomId}}/join
+Authorization: Bearer {{joinerToken}}
+
+### ============================================
+### GET PARTICIPANTS (after join)
+### ============================================
+
+GET {{baseUrl}}/rooms/{{roomId}}/participants
+Authorization: Bearer {{creatorToken}}
+
+### ============================================
+### LEAVE ROOM (as second user)
+### ============================================
+
+POST {{baseUrl}}/rooms/{{roomId}}/leave
+Authorization: Bearer {{joinerToken}}
+
+### ============================================
+### DELETE ROOM (creator only)
+### ============================================
+
+### First, create another room to delete
+# @name createRoomToDelete
+POST {{baseUrl}}/rooms
+Authorization: Bearer {{creatorToken}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Room to Delete"
+}
+
+@deleteRoomId = {{createRoomToDelete.response.body.id}}
+
+### Delete the room (creator)
+DELETE {{baseUrl}}/rooms/{{deleteRoomId}}
+Authorization: Bearer {{creatorToken}}
+
+### ============================================
+### ERROR CASES
+### ============================================
+
+### Create room without name (should fail)
+POST {{baseUrl}}/rooms
+Authorization: Bearer {{creatorToken}}
+Content-Type: {{contentType}}
+
+{
+  "name": ""
+}
+
+### Room name too long (should fail - max 100 chars)
+POST {{baseUrl}}/rooms
+Authorization: Bearer {{creatorToken}}
+Content-Type: {{contentType}}
+
+{
+  "name": "This is a very long room name that exceeds the maximum allowed length of one hundred characters which should fail validation"
+}
+
+### Delete room as non-creator (should fail - 403)
+# First join then try to delete
+POST {{baseUrl}}/rooms/{{roomId}}/join
+Authorization: Bearer {{joinerToken}}
+
+###
+DELETE {{baseUrl}}/rooms/{{roomId}}
+Authorization: Bearer {{joinerToken}}
+
+### Get non-existent room (should fail - 404)
+GET {{baseUrl}}/rooms/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{creatorToken}}
+
+### Join room not participant (should succeed)
+POST {{baseUrl}}/rooms/{{roomId}}/join
+Authorization: Bearer {{joinerToken}}
+
+### Leave room not in (should handle gracefully)
+POST {{baseUrl}}/rooms/{{roomId}}/leave
+Authorization: Bearer {{joinerToken}}
+
+###
+POST {{baseUrl}}/rooms/{{roomId}}/leave
+Authorization: Bearer {{joinerToken}}

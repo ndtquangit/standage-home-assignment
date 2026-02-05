@@ -13,6 +13,7 @@ import { Room } from './room.entity';
 
 @Entity('room_participants')
 @Unique(['userId', 'roomId'])
+@Index(['roomId', 'leftAt']) // Composite index for active participant queries
 export class RoomParticipant {
   @PrimaryGeneratedColumn('uuid')
   id: string;
