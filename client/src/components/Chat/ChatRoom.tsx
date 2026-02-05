@@ -1,0 +1,274 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { roomsApi } from '../../api/client';
+import { useAuth } from '../../hooks/useAuth';
+import { useSocket } from '../../hooks/useSocket';
+import MessageList from './MessageList';
+import MessageInput from './MessageInput';
+import ParticipantList from './ParticipantList';
+import TypingIndicator from './TypingIndicator';
+import type { Message, TypingPayload } from '../../types';
+
+interface ChatRoomProps {
+  roomId: string;
+  onLeaveRoom: () => void;
+}
+
+export default function ChatRoom({ roomId, onLeaveRoom }: ChatRoomProps) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const {
+    isReady,
+    onMessage,
+    onMessageUpdated,
+    onMessageDeleted,
+    onUserJoined,
+    onUserLeft,
+    onRoomDeleted,
+    onTypingStart,
+    onTypingStop,
+  } = useSocket();
+
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
+
+  const { data: room, isLoading: roomLoading } = useQuery({
+    queryKey: ['room', roomId],
+    queryFn: () => roomsApi.getById(roomId),
+    enabled: !!roomId,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => roomsApi.delete(roomId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      onLeaveRoom();
+    },
+  });
+
+  const leaveMutation = useMutation({
+    mutationFn: () => roomsApi.leave(roomId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      onLeaveRoom();
+    },
+  });
+
+  // Subscribe to real-time events
+  useEffect(() => {
+    if (!isReady) return;
+
+    const unsubMessage = onMessage((message) => {
+      if (message.roomId === roomId) {
+        queryClient.setQueryData<{ pages: { messages: Message[] }[] }>(
+          ['messages', roomId],
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              pages: old.pages.map((page, index) =>
+                index === 0
+                  ? { ...page, messages: [message, ...page.messages] }
+                  : page
+              ),
+            };
+          }
+        );
+        // Clear typing indicator for this user
+        setTypingUsers((prev) => {
+          const next = new Map(prev);
+          next.delete(message.senderId);
+          return next;
+        });
+      }
+    });
+
+    const unsubUpdated = onMessageUpdated((message) => {
+      if (message.roomId === roomId) {
+        queryClient.setQueryData<{ pages: { messages: Message[] }[] }>(
+          ['messages', roomId],
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              pages: old.pages.map((page) => ({
+                ...page,
+                messages: page.messages.map((m) =>
+                  m.id === message.id ? message : m
+                ),
+              })),
+            };
+          }
+        );
+      }
+    });
+
+    const unsubDeleted = onMessageDeleted((data) => {
+      if (data.roomId === roomId) {
+        queryClient.setQueryData<{ pages: { messages: Message[] }[] }>(
+          ['messages', roomId],
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              pages: old.pages.map((page) => ({
+                ...page,
+                messages: page.messages.filter((m) => m.id !== data.messageId),
+              })),
+            };
+          }
+        );
+      }
+    });
+
+    const unsubJoined = onUserJoined((data) => {
+      if (data.roomId === roomId) {
+        queryClient.invalidateQueries({ queryKey: ['room', roomId] });
+      }
+    });
+
+    const unsubLeft = onUserLeft((data) => {
+      if (data.roomId === roomId) {
+        queryClient.invalidateQueries({ queryKey: ['room', roomId] });
+      }
+    });
+
+    const unsubRoomDeleted = onRoomDeleted((data) => {
+      if (data.roomId === roomId) {
+        onLeaveRoom();
+      }
+    });
+
+    const unsubTypingStart = onTypingStart((data: TypingPayload) => {
+      if (data.roomId === roomId && data.userId !== user?.id) {
+        setTypingUsers((prev) => new Map(prev).set(data.userId, data.nickname));
+      }
+    });
+
+    const unsubTypingStop = onTypingStop((data: TypingPayload) => {
+      if (data.roomId === roomId) {
+        setTypingUsers((prev) => {
+          const next = new Map(prev);
+          next.delete(data.userId);
+          return next;
+        });
+      }
+    });
+
+    return () => {
+      unsubMessage();
+      unsubUpdated();
+      unsubDeleted();
+      unsubJoined();
+      unsubLeft();
+      unsubRoomDeleted();
+      unsubTypingStart();
+      unsubTypingStop();
+    };
+  }, [
+    isReady,
+    roomId,
+    user?.id,
+    queryClient,
+    onMessage,
+    onMessageUpdated,
+    onMessageDeleted,
+    onUserJoined,
+    onUserLeft,
+    onRoomDeleted,
+    onTypingStart,
+    onTypingStop,
+    onLeaveRoom,
+  ]);
+
+  const handleEditMessage = useCallback((message: Message) => {
+    setEditingMessage(message);
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingMessage(null);
+  }, []);
+
+  const handleEditComplete = useCallback(() => {
+    setEditingMessage(null);
+  }, []);
+
+  if (roomLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-gray-500">Loading room...</div>
+      </div>
+    );
+  }
+
+  if (!room) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-gray-500">Room not found</div>
+      </div>
+    );
+  }
+
+  const isCreator = room.creatorId === user?.id;
+
+  return (
+    <div className="flex-1 flex overflow-hidden">
+      {/* Main chat area */}
+      <div className="flex-1 flex flex-col">
+        {/* Room header */}
+        <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-gray-800">{room.name}</h2>
+            <p className="text-xs text-gray-500">
+              {room.participants.length} participant
+              {room.participants.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            {isCreator ? (
+              <button
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                className="text-sm text-red-500 hover:text-red-700 transition-colors"
+              >
+                Delete Room
+              </button>
+            ) : (
+              <button
+                onClick={() => leaveMutation.mutate()}
+                disabled={leaveMutation.isPending}
+                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                Leave Room
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Messages */}
+        <MessageList
+          roomId={roomId}
+          onEditMessage={handleEditMessage}
+          editingMessageId={editingMessage?.id}
+        />
+
+        {/* Typing indicator */}
+        <TypingIndicator typingUsers={typingUsers} />
+
+        {/* Message input */}
+        <MessageInput
+          key={editingMessage?.id ?? 'new'}
+          roomId={roomId}
+          editingMessage={editingMessage}
+          onCancelEdit={handleCancelEdit}
+          onEditComplete={handleEditComplete}
+        />
+      </div>
+
+      {/* Participant sidebar */}
+      <div className="w-60 bg-white border-l border-gray-200">
+        <ParticipantList participants={room.participants} />
+      </div>
+    </div>
+  );
+}
