@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { appConfig, databaseConfig, jwtConfig } from './config';
+import { UsersModule } from './modules/users/users.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { appConfig, databaseConfig, jwtConfig } from './config';
         logging: configService.get('app.nodeEnv') === 'development',
       }),
     }),
+    UsersModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
