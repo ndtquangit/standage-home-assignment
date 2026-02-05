@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: chat-postgres
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME:-chatapp}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-chatapp_password}
+      POSTGRES_DB: ${DATABASE_NAME:-chatapp}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - chat-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME:-chatapp} -d ${DATABASE_NAME:-chatapp}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      target: production
+    container_name: chat-server
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-chatapp}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-chatapp_password}
+      DATABASE_NAME: ${DATABASE_NAME:-chatapp}
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-key-change-in-production}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-7d}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - chat-network
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      target: production
+    container_name: chat-client
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - chat-network
+    restart: unless-stopped
+
+networks:
+  chat-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

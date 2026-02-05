@@ -1,0 +1,25 @@
+# Development overrides
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  server:
+    build:
+      target: development
+    container_name: chat-server-dev
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    command: npm run start:dev
+
+  client:
+    build:
+      target: development
+    container_name: chat-client-dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    command: npm run dev -- --host
