@@ -25,9 +25,10 @@ A real-time chat application built with NestJS, React, and PostgreSQL.
 ## Features
 
 - **User Authentication:** Login with nickname (no password required)
-- **Chat Rooms:** Create, join, and delete rooms
-- **Real-time Messaging:** Send and receive messages instantly
-- **Message Editing:** Edit your last message (if no one else has sent a message since)
+- **Chat Rooms:** Create, join, leave, and delete rooms
+- **Messaging:** Send, edit, and delete messages with cursor-based pagination
+- **Message Editing Constraint:** Edit your last message only if no one else has sent a message since
+- **Real-time Messaging:** Send and receive messages instantly via WebSocket
 - **User Presence:** See who's online/offline
 - **Typing Indicators:** See when others are typing
 
@@ -131,23 +132,58 @@ npm run dev
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/rooms` | List all rooms |
-| POST | `/api/rooms` | Create a room |
-| GET | `/api/rooms/:id` | Get room details |
+| GET | `/api/rooms` | List all rooms with participant counts |
+| POST | `/api/rooms` | Create a room (auto-joins creator) |
+| GET | `/api/rooms/:id` | Get room details with participants |
 | DELETE | `/api/rooms/:id` | Delete room (creator only) |
 | POST | `/api/rooms/:id/join` | Join a room |
 | POST | `/api/rooms/:id/leave` | Leave a room |
+| GET | `/api/rooms/:id/participants` | List room participants |
 
 ### Messages
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/rooms/:id/messages` | Get room messages |
+| GET | `/api/rooms/:id/messages` | Get messages (paginated) |
 | POST | `/api/rooms/:id/messages` | Send a message |
-| PATCH | `/api/rooms/:id/messages/:msgId` | Edit a message |
+| PATCH | `/api/rooms/:id/messages/:msgId` | Edit message (with constraint) |
 | DELETE | `/api/rooms/:id/messages/:msgId` | Delete a message |
 
-## WebSocket Events
+**Query Parameters for GET messages:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `cursor` | UUID | - | Message ID to start from (for pagination) |
+| `limit` | number | 50 | Number of messages (1-100) |
+
+**Edit Constraint:** You can only edit your last message if no other user has sent a message after yours.
+
+### API Examples
+
+```bash
+# Login
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"nickname":"john"}'
+# Response: {"user":{...},"accessToken":"eyJ..."}
+
+# Create a room (use token from login)
+curl -X POST http://localhost:3000/api/rooms \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"name":"General"}'
+
+# Send a message
+curl -X POST http://localhost:3000/api/rooms/<roomId>/messages \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"content":"Hello, world!"}'
+
+# Get messages with pagination
+curl "http://localhost:3000/api/rooms/<roomId>/messages?limit=20" \
+  -H "Authorization: Bearer <token>"
+```
+
+## WebSocket Events (Phase 4 - Pending)
 
 ### Client → Server
 - `room:join` - Join a room channel
@@ -210,11 +246,15 @@ cd client && npm run build
 
 ## Design Decisions & Assumptions
 
-1. **Nickname as login:** Same nickname = same user account (no password required)
-2. **Soft deletes:** Rooms and messages use soft delete for data integrity
-3. **Message editing:** Can only edit your last message if no one else has posted after
-4. **Real-time first:** All message operations broadcast via WebSocket
-5. **No file uploads:** Text messages only (for simplicity)
+1. **Nickname as login:** Same nickname = same user account (unique constraint, no password required)
+2. **Session tokens:** JWT stored in database for logout invalidation
+3. **Soft deletes:** Rooms and messages use soft delete for data integrity
+4. **Room membership:** Users must join a room to send messages; supports re-join after leaving
+5. **Auto-join:** Room creator is automatically added as participant
+6. **Message editing constraint:** Can only edit your last message if no one else has posted after
+7. **Creator-only deletion:** Only room creator can delete the room
+8. **Cursor-based pagination:** Messages fetched newest-first with cursor for infinite scroll
+9. **No file uploads:** Text messages only (for simplicity)
 
 ## License
 

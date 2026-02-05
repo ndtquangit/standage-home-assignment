@@ -6,6 +6,8 @@ import { AppService } from './app.service';
 import { appConfig, databaseConfig, jwtConfig } from './config';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { RoomsModule } from './modules/rooms/rooms.module';
+import { MessagesModule } from './modules/messages/messages.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { AuthModule } from './modules/auth/auth.module';
     }),
     UsersModule,
     AuthModule,
+    RoomsModule,
+    MessagesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
