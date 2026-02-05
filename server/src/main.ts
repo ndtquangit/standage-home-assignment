@@ -1,9 +1,10 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
@@ -29,7 +30,7 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix('api');
 
   await app.listen(port);
-  console.log(`Server running on http://localhost:${port}`);
+  logger.log(`Server running on http://localhost:${port}`);
 }
 
 void bootstrap();

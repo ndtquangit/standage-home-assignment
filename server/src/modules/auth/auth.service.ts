@@ -1,6 +1,5 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { User } from '../users/entities/user.entity';
 import { AuthResponseDto, UserResponseDto } from './dto';
@@ -12,10 +11,11 @@ export interface JwtPayload {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
   ) {}
 
   async login(nickname: string): Promise<AuthResponseDto> {
@@ -24,6 +24,7 @@ export class AuthService {
 
     if (!user) {
       user = await this.usersService.create(nickname);
+      this.logger.log(`Created new user: ${nickname}`);
     }
 
     // Generate JWT token
@@ -52,8 +53,13 @@ export class AuthService {
       if (user && user.sessionToken === token) {
         return user;
       }
+
+      this.logger.debug(`Token validation failed: session mismatch`);
       return null;
-    } catch {
+    } catch (error) {
+      this.logger.debug(
+        `Token validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
       return null;
     }
   }

@@ -1,19 +1,25 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { Request } from 'express';
 import { UsersService } from '../../users/users.service';
+import { User } from '../../users/entities/user.entity';
 import { JwtPayload } from '../auth.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    private readonly configService: ConfigService,
+    configService: ConfigService,
     private readonly usersService: UsersService,
   ) {
     const secretOrKey = configService.get<string>('jwt.secret');
     if (!secretOrKey) {
-      throw new Error('JWT_SECRET is not defined');
+      throw new InternalServerErrorException('JWT_SECRET is not configured');
     }
 
     super({
@@ -24,7 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(req: Request, payload: JwtPayload) {
+  async validate(req: Request, payload: JwtPayload): Promise<User> {
     const user = await this.usersService.findById(payload.sub);
 
     if (!user) {
@@ -32,8 +38,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     // Get the token from the request to verify it matches stored session
-    const authHeader = req.headers['authorization'] as string;
-    const token = authHeader?.replace('Bearer ', '');
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      throw new UnauthorizedException('Authorization header missing');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
 
     if (user.sessionToken !== token) {
       throw new UnauthorizedException('Session expired');
