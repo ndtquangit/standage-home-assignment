@@ -183,20 +183,38 @@ curl "http://localhost:3000/api/rooms/<roomId>/messages?limit=20" \
   -H "Authorization: Bearer <token>"
 ```
 
-## WebSocket Events (Phase 4 - Pending)
+## WebSocket Events
+
+Connect to WebSocket at `http://localhost:3000` with auth token:
+```javascript
+const socket = io("http://localhost:3000", {
+  auth: { token: "your-jwt-token" },
+  transports: ["websocket"],
+});
+
+// Wait for 'ready' event before sending messages
+socket.on("ready", (data) => {
+  console.log("Connected as:", data.nickname);
+});
+```
 
 ### Client → Server
-- `room:join` - Join a room channel
-- `room:leave` - Leave a room channel
-- `message:send` - Send a message
-- `message:edit` - Edit last message
-- `typing:start` / `typing:stop` - Typing indicators
+- `room:join` - Join a room channel `{ roomId }`
+- `room:leave` - Leave a room channel `{ roomId }`
+- `message:send` - Send a message `{ roomId, content }`
+- `message:edit` - Edit last message `{ roomId, messageId, content }`
+- `message:delete` - Delete a message `{ roomId, messageId }`
+- `typing:start` / `typing:stop` - Typing indicators `{ roomId }`
 
 ### Server → Client
+- `ready` - Connection setup complete `{ userId, nickname }`
 - `message:new` - New message received
 - `message:updated` - Message was edited
 - `message:deleted` - Message was deleted
-- `user:online` / `user:offline` - User presence
+- `user:presence` - User online/offline status
+- `room:user_joined` / `room:user_left` - Room membership
+- `room:deleted` - Room was deleted
+- `typing:start` / `typing:stop` - Typing indicators
 - `room:user_joined` / `room:user_left` - Room membership
 - `room:deleted` - Room was deleted
 

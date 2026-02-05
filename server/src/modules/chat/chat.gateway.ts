@@ -93,6 +93,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
 
       this.logger.log(`User connected: ${user.nickname} (${client.id})`);
+
+      // Notify client that connection setup is complete
+      client.emit('ready', { userId: user.id, nickname: user.nickname });
     } catch (error) {
       this.logger.error(`Connection error: ${error}`);
       client.disconnect();
@@ -204,9 +207,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() data: SendMessageDto,
   ): Promise<{ success: boolean; message?: MessagePayload; error?: string }> {
+    this.logger.log(`message:send received from ${client.user.nickname}`);
     try {
       const { roomId, content } = data;
       const user = client.user;
+      this.logger.log(`Sending message to room ${roomId}: ${content}`);
 
       // Create message via service
       const messageResponse = await this.messagesService.create(
