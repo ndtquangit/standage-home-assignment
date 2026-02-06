@@ -19,6 +19,8 @@ export default function ChatRoom({ roomId, onLeaveRoom }: ChatRoomProps) {
   const queryClient = useQueryClient();
   const {
     isReady,
+    joinRoom,
+    leaveRoom,
     onMessage,
     onMessageUpdated,
     onMessageDeleted,
@@ -37,6 +39,17 @@ export default function ChatRoom({ roomId, onLeaveRoom }: ChatRoomProps) {
     queryFn: () => roomsApi.getById(roomId),
     enabled: !!roomId,
   });
+
+  // Join/leave socket room for real-time updates
+  useEffect(() => {
+    if (!isReady || !roomId) return;
+
+    joinRoom(roomId);
+
+    return () => {
+      leaveRoom(roomId);
+    };
+  }, [isReady, roomId, joinRoom, leaveRoom]);
 
   const deleteMutation = useMutation({
     mutationFn: () => roomsApi.delete(roomId),
