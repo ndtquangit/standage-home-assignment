@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -19,7 +20,7 @@ describe('MessagesService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
-    creator: null as any,
+    creator: undefined as unknown as Room['creator'],
     participants: [],
     messages: [],
   } as Room;

@@ -11,13 +11,18 @@ export default registerAs('database', () => {
 
   // Fail fast in production if required env vars are missing
   if (isProduction) {
-    const required = ['DATABASE_HOST', 'DATABASE_USERNAME', 'DATABASE_PASSWORD', 'DATABASE_NAME'];
+    const required = [
+      'DATABASE_HOST',
+      'DATABASE_USERNAME',
+      'DATABASE_PASSWORD',
+      'DATABASE_NAME',
+    ];
     const missing = required.filter((key) => !process.env[key]);
 
     if (missing.length > 0) {
       throw new Error(
         `SECURITY ERROR: Missing required database environment variables in production: ${missing.join(', ')}. ` +
-        'Set these via environment variables or secrets management.',
+          'Set these via environment variables or secrets management.',
       );
     }
   }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -22,7 +23,7 @@ describe('RoomsService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
-    creator: null as any,
+    creator: undefined as unknown as Room['creator'],
     participants: [],
     messages: [],
   } as Room;
@@ -191,6 +192,7 @@ describe('RoomsService', () => {
 
       expect(participantsRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           leftAt: expect.any(Date),
         }),
       );

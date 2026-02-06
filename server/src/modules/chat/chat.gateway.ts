@@ -23,7 +23,6 @@ import {
   DeleteMessageDto,
   TypingDto,
   UserPresencePayload,
-  RoomUserPayload,
   MessagePayload,
   TypingPayload,
 } from './dto';

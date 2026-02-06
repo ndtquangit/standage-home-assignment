@@ -59,7 +59,13 @@ export class RoomsService {
       .where('room.deleted_at IS NULL')
       .groupBy('room.id')
       .orderBy('room.created_at', 'DESC')
-      .getRawMany();
+      .getRawMany<{
+        id: string;
+        name: string;
+        creatorId: string;
+        createdAt: Date;
+        participantCount: number;
+      }>();
 
     return roomsWithCounts.map((room) => ({
       id: room.id,

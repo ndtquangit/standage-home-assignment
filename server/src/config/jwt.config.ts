@@ -15,7 +15,7 @@ export default registerAs('jwt', () => {
   if (isProduction && !secret) {
     throw new Error(
       'SECURITY ERROR: JWT_SECRET environment variable is required in production. ' +
-      'Generate a secure random string (min 32 characters) and set it via environment variable.',
+        'Generate a secure random string (min 32 characters) and set it via environment variable.',
     );
   }
 
