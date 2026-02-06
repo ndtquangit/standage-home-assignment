@@ -143,21 +143,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const { roomId } = data;
       const user = client.user;
 
-      // Join the room in database
-      await this.roomsService.joinRoom(roomId, user.id);
+      // Verify user is a participant (don't modify membership - that's done via REST API)
+      const isParticipant = await this.roomsService.isParticipant(
+        roomId,
+        user.id,
+      );
+      if (!isParticipant) {
+        return { success: false, error: 'Not a member of this room' };
+      }
 
-      // Join the socket room
+      // Join the socket room for real-time updates
       await client.join(`room:${roomId}`);
 
-      // Notify other room members
-      const payload: RoomUserPayload = {
-        roomId,
-        userId: user.id,
-        nickname: user.nickname,
-      };
-      client.to(`room:${roomId}`).emit('room:user_joined', payload);
-
-      this.logger.log(`${user.nickname} joined room ${roomId}`);
+      this.logger.log(`${user.nickname} subscribed to room ${roomId}`);
       return { success: true };
     } catch (error) {
       const message =
@@ -177,21 +175,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const { roomId } = data;
       const user = client.user;
 
-      // Leave the room in database
-      await this.roomsService.leaveRoom(roomId, user.id);
-
-      // Leave the socket room
+      // Leave the socket room (don't modify membership - that's done via REST API)
       await client.leave(`room:${roomId}`);
 
-      // Notify other room members
-      const payload: RoomUserPayload = {
-        roomId,
-        userId: user.id,
-        nickname: user.nickname,
-      };
-      client.to(`room:${roomId}`).emit('room:user_left', payload);
-
-      this.logger.log(`${user.nickname} left room ${roomId}`);
+      this.logger.log(`${user.nickname} unsubscribed from room ${roomId}`);
       return { success: true };
     } catch (error) {
       const message =
