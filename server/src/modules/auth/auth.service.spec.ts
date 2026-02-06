@@ -116,7 +116,10 @@ describe('AuthService', () => {
       const token = 'valid-token';
       const userWithToken = { ...mockUser, sessionToken: token };
 
-      jwtService.verify.mockReturnValue({ sub: mockUser.id, nickname: 'testuser' });
+      jwtService.verify.mockReturnValue({
+        sub: mockUser.id,
+        nickname: 'testuser',
+      });
       usersService.findById.mockResolvedValue(userWithToken);
 
       const result = await service.validateToken(token);
@@ -130,7 +133,10 @@ describe('AuthService', () => {
       const token = 'new-token';
       const userWithOldToken = { ...mockUser, sessionToken: 'old-token' };
 
-      jwtService.verify.mockReturnValue({ sub: mockUser.id, nickname: 'testuser' });
+      jwtService.verify.mockReturnValue({
+        sub: mockUser.id,
+        nickname: 'testuser',
+      });
       usersService.findById.mockResolvedValue(userWithOldToken);
 
       const result = await service.validateToken(token);
@@ -149,7 +155,10 @@ describe('AuthService', () => {
     });
 
     it('should return null for non-existent user', async () => {
-      jwtService.verify.mockReturnValue({ sub: 'non-existent', nickname: 'test' });
+      jwtService.verify.mockReturnValue({
+        sub: 'non-existent',
+        nickname: 'test',
+      });
       usersService.findById.mockResolvedValue(null);
 
       const result = await service.validateToken('valid-token');

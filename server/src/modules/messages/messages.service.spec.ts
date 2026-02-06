@@ -17,6 +17,11 @@ describe('MessagesService', () => {
     name: 'Test Room',
     creatorId: 'user-creator',
     createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+    creator: null as any,
+    participants: [],
+    messages: [],
   } as Room;
 
   const mockMessage: Message = {
@@ -51,7 +56,10 @@ describe('MessagesService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MessagesService,
-        { provide: getRepositoryToken(Message), useValue: mockMessagesRepository },
+        {
+          provide: getRepositoryToken(Message),
+          useValue: mockMessagesRepository,
+        },
         { provide: RoomsService, useValue: mockRoomsService },
       ],
     }).compile();
@@ -69,10 +77,17 @@ describe('MessagesService', () => {
       messagesRepository.save.mockResolvedValue(mockMessage);
       messagesRepository.findOne.mockResolvedValue(mockMessage);
 
-      const result = await service.create('room-123', 'user-alice', 'Hello world');
+      const result = await service.create(
+        'room-123',
+        'user-alice',
+        'Hello world',
+      );
 
       expect(roomsService.findById).toHaveBeenCalledWith('room-123');
-      expect(roomsService.isParticipant).toHaveBeenCalledWith('room-123', 'user-alice');
+      expect(roomsService.isParticipant).toHaveBeenCalledWith(
+        'room-123',
+        'user-alice',
+      );
       expect(messagesRepository.create).toHaveBeenCalledWith({
         content: 'Hello world',
         senderId: 'user-alice',
@@ -120,14 +135,20 @@ describe('MessagesService', () => {
         .mockResolvedValueOnce(mockMessage) // Find message by id
         .mockResolvedValueOnce(mockMessage); // User's last message check
 
-      messagesRepository.createQueryBuilder.mockReturnValue(queryBuilder as any);
+      messagesRepository.createQueryBuilder.mockReturnValue(
+        queryBuilder as any,
+      );
       messagesRepository.save.mockResolvedValue({
         ...mockMessage,
         content: 'Edited content',
         isEdited: true,
       });
 
-      const result = await service.update('message-123', 'user-alice', 'Edited content');
+      const result = await service.update(
+        'message-123',
+        'user-alice',
+        'Edited content',
+      );
 
       expect(result.content).toBe('Edited content');
       expect(result.isEdited).toBe(true);
@@ -180,11 +201,15 @@ describe('MessagesService', () => {
         .mockResolvedValueOnce(aliceMessage) // Find Alice's message
         .mockResolvedValueOnce(aliceMessage); // It IS her last message
 
-      messagesRepository.createQueryBuilder.mockReturnValue(queryBuilder as any);
+      messagesRepository.createQueryBuilder.mockReturnValue(
+        queryBuilder as any,
+      );
 
       await expect(
         service.update('message-123', 'user-alice', 'Try to edit after Bob'),
-      ).rejects.toThrow('Cannot edit message: another user has sent a message after yours');
+      ).rejects.toThrow(
+        'Cannot edit message: another user has sent a message after yours',
+      );
     });
 
     it('should throw NotFoundException if message not found', async () => {
@@ -199,7 +224,11 @@ describe('MessagesService', () => {
   describe('delete', () => {
     it('should delete own message', async () => {
       messagesRepository.findOne.mockResolvedValue(mockMessage);
-      messagesRepository.softDelete.mockResolvedValue(undefined);
+      messagesRepository.softDelete.mockResolvedValue({
+        affected: 1,
+        raw: [],
+        generatedMaps: [],
+      });
 
       await service.delete('message-123', 'user-alice');
 
@@ -218,9 +247,9 @@ describe('MessagesService', () => {
     it('should throw NotFoundException if message not found', async () => {
       messagesRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.delete('non-existent', 'user-alice')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.delete('non-existent', 'user-alice'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -241,7 +270,9 @@ describe('MessagesService', () => {
       };
 
       roomsService.findById.mockResolvedValue(mockRoom);
-      messagesRepository.createQueryBuilder.mockReturnValue(queryBuilder as any);
+      messagesRepository.createQueryBuilder.mockReturnValue(
+        queryBuilder as any,
+      );
 
       const result = await service.findByRoom('room-123', undefined, 50);
 
@@ -265,7 +296,9 @@ describe('MessagesService', () => {
       };
 
       roomsService.findById.mockResolvedValue(mockRoom);
-      messagesRepository.createQueryBuilder.mockReturnValue(queryBuilder as any);
+      messagesRepository.createQueryBuilder.mockReturnValue(
+        queryBuilder as any,
+      );
 
       const result = await service.findByRoom('room-123', undefined, 50);
 

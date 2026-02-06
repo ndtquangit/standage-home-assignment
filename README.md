@@ -26,9 +26,11 @@ A real-time chat application built with NestJS, React, and PostgreSQL.
 
 - **User Authentication:** Login with nickname (no password required)
 - **Chat Rooms:** Create, join, leave, and delete rooms
+- **Room Deletion:** Confirmation dialog for creator; instant notification for participants
 - **Messaging:** Send, edit, and delete messages with cursor-based pagination
 - **Message Editing Constraint:** Edit your last message only if no one else has sent a message since
 - **Real-time Messaging:** Send and receive messages instantly via WebSocket
+- **Real-time Room & Participant Updates:** New rooms and join/leave changes sync instantly across all users
 - **User Presence:** See who's online/offline
 - **Typing Indicators:** See when others are typing
 

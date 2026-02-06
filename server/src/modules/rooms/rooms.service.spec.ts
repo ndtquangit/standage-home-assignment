@@ -22,6 +22,9 @@ describe('RoomsService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
+    creator: null as any,
+    participants: [],
+    messages: [],
   } as Room;
 
   const mockParticipant: RoomParticipant = {
@@ -94,7 +97,11 @@ describe('RoomsService', () => {
   describe('delete', () => {
     it('should delete room if user is creator', async () => {
       roomsRepository.findOne.mockResolvedValue(mockRoom);
-      roomsRepository.softDelete.mockResolvedValue(undefined);
+      roomsRepository.softDelete.mockResolvedValue({
+        affected: 1,
+        raw: [],
+        generatedMaps: [],
+      });
 
       await service.delete('room-123', 'user-creator');
 
@@ -113,9 +120,9 @@ describe('RoomsService', () => {
     it('should throw NotFoundException if room not found', async () => {
       roomsRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.delete('non-existent', 'user-creator')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.delete('non-existent', 'user-creator'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -166,9 +173,9 @@ describe('RoomsService', () => {
     it('should throw NotFoundException if room not found', async () => {
       roomsRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.joinRoom('non-existent', 'user-123')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.joinRoom('non-existent', 'user-123'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -231,9 +238,9 @@ describe('RoomsService', () => {
     it('should throw NotFoundException if room not found', async () => {
       roomsRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.findByIdWithParticipants('non-existent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.findByIdWithParticipants('non-existent'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
