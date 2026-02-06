@@ -363,4 +363,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   broadcastToRoom(roomId: string, event: string, payload: unknown): void {
     this.server.to(`room:${roomId}`).emit(event, payload);
   }
+
+  broadcastRoomCreated(room: {
+    id: string;
+    name: string;
+    creatorId: string;
+    createdAt: Date;
+    participantCount?: number;
+  }): void {
+    this.server.emit('room:created', room);
+  }
 }

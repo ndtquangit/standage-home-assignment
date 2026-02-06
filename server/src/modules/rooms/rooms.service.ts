@@ -195,7 +195,7 @@ export class RoomsService {
 
     return participants
       .map((p) => p.room)
-      .filter((room) => room.deletedAt === null);
+      .filter((room) => room && room.deletedAt === null);
   }
 
   private toRoomResponse(room: Room): RoomResponseDto {

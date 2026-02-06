@@ -9,11 +9,14 @@ import {
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { RoomsService } from './rooms.service';
+import { ChatGateway } from '../chat/chat.gateway';
 import {
   CreateRoomDto,
   RoomResponseDto,
@@ -24,14 +27,20 @@ import {
 @Controller('rooms')
 @UseGuards(JwtAuthGuard)
 export class RoomsController {
-  constructor(private readonly roomsService: RoomsService) {}
+  constructor(
+    private readonly roomsService: RoomsService,
+    @Inject(forwardRef(() => ChatGateway))
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
   @Post()
   async create(
     @Body() createRoomDto: CreateRoomDto,
     @CurrentUser() user: User,
   ): Promise<RoomResponseDto> {
-    return this.roomsService.create(createRoomDto.name, user.id);
+    const room = await this.roomsService.create(createRoomDto.name, user.id);
+    this.chatGateway.broadcastRoomCreated({ ...room, participantCount: 1 });
+    return room;
   }
 
   @Get()

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roomsApi } from '../../api/client';
+import { useSocket } from '../../hooks/useSocket';
 import type { Room } from '../../types';
 import CreateRoomModal from './CreateRoomModal';
 
@@ -12,12 +13,21 @@ interface RoomListProps {
 export default function RoomList({ selectedRoomId, onSelectRoom }: RoomListProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { onRoomCreated } = useSocket();
 
   const { data: rooms, isLoading, error } = useQuery({
     queryKey: ['rooms'],
     queryFn: roomsApi.getAll,
     refetchInterval: 30000, // Refetch every 30 seconds
   });
+
+  // Subscribe to room:created for real-time updates
+  useEffect(() => {
+    const unsubscribe = onRoomCreated(() => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    });
+    return unsubscribe;
+  }, [onRoomCreated, queryClient]);
 
   const joinMutation = useMutation({
     mutationFn: roomsApi.join,
@@ -27,15 +37,13 @@ export default function RoomList({ selectedRoomId, onSelectRoom }: RoomListProps
   });
 
   const handleRoomClick = async (room: Room) => {
-    // Join room if not already selected
     if (selectedRoomId !== room.id) {
       try {
         await joinMutation.mutateAsync(room.id);
-        onSelectRoom(room.id);
       } catch {
-        // If already a member, just select the room
-        onSelectRoom(room.id);
+        // Already a member - ignore error
       }
+      onSelectRoom(room.id);
     }
   };
 

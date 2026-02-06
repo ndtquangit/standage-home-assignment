@@ -2,6 +2,7 @@ import { createContext } from 'react';
 import { Socket } from 'socket.io-client';
 import type {
   User,
+  Room,
   Message,
   UserPresencePayload,
   RoomUserPayload,
@@ -35,6 +36,7 @@ export interface SocketContextType {
   onUserPresence: (callback: (data: UserPresencePayload) => void) => () => void;
   onUserJoined: (callback: (data: RoomUserPayload) => void) => () => void;
   onUserLeft: (callback: (data: RoomUserPayload) => void) => () => void;
+  onRoomCreated: (callback: (data: Room) => void) => () => void;
   onRoomDeleted: (callback: (data: { roomId: string }) => void) => () => void;
   onTypingStart: (callback: (data: TypingPayload) => void) => () => void;
   onTypingStop: (callback: (data: TypingPayload) => void) => () => void;

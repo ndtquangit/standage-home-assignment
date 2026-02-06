@@ -3,6 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../hooks/useAuth';
 import { SocketContext } from './contexts';
 import type {
+  Room,
   Message,
   UserPresencePayload,
   RoomUserPayload,
@@ -155,6 +156,16 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     [socket]
   );
 
+  const onRoomCreated = useCallback(
+    (callback: (data: Room) => void) => {
+      socket?.on('room:created', callback);
+      return () => {
+        socket?.off('room:created', callback);
+      };
+    },
+    [socket]
+  );
+
   const onRoomDeleted = useCallback(
     (callback: (data: { roomId: string }) => void) => {
       socket?.on('room:deleted', callback);
@@ -204,6 +215,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         onUserPresence,
         onUserJoined,
         onUserLeft,
+        onRoomCreated,
         onRoomDeleted,
         onTypingStart,
         onTypingStop,
