@@ -212,11 +212,10 @@ socket.on("ready", (data) => {
 - `message:updated` - Message was edited
 - `message:deleted` - Message was deleted
 - `user:presence` - User online/offline status
-- `room:user_joined` / `room:user_left` - Room membership
+- `room:created` - New room was created (broadcasts to all users)
+- `room:user_joined` / `room:user_left` - Room membership changes
 - `room:deleted` - Room was deleted
 - `typing:start` / `typing:stop` - Typing indicators
-- `room:user_joined` / `room:user_left` - Room membership
-- `room:deleted` - Room was deleted
 
 ## Environment Variables
 
