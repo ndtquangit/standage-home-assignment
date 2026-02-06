@@ -33,6 +33,8 @@ export default function ChatRoom({ roomId, onLeaveRoom }: ChatRoomProps) {
 
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [roomDeletedMessage, setRoomDeletedMessage] = useState<string | null>(null);
 
   const { data: room, isLoading: roomLoading } = useQuery({
     queryKey: ['room', roomId],
@@ -148,7 +150,8 @@ export default function ChatRoom({ roomId, onLeaveRoom }: ChatRoomProps) {
 
     const unsubRoomDeleted = onRoomDeleted((data) => {
       if (data.roomId === roomId) {
-        onLeaveRoom();
+        // Show notification for participants (not the creator who deleted)
+        setRoomDeletedMessage('This room has been deleted by the owner.');
       }
     });
 
@@ -240,8 +243,7 @@ export default function ChatRoom({ roomId, onLeaveRoom }: ChatRoomProps) {
           <div className="flex gap-2">
             {isCreator ? (
               <button
-                onClick={() => deleteMutation.mutate()}
-                disabled={deleteMutation.isPending}
+                onClick={() => setShowDeleteConfirm(true)}
                 className="text-sm text-red-500 hover:text-red-700 transition-colors"
               >
                 Delete Room
@@ -282,6 +284,58 @@ export default function ChatRoom({ roomId, onLeaveRoom }: ChatRoomProps) {
       <div className="w-60 bg-white border-l border-gray-200">
         <ParticipantList participants={room.participants} />
       </div>
+
+      {/* Delete confirmation dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+              Delete Room?
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete "{room.name}"? This will remove the
+              room for all {room.participants.length} participant
+              {room.participants.length !== 1 ? 's' : ''}.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deleteMutation.mutate();
+                  setShowDeleteConfirm(false);
+                }}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete Room'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Room deleted notification for participants */}
+      {roomDeletedMessage && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6 text-center">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+              Room Deleted
+            </h2>
+            <p className="text-gray-600 mb-6">{roomDeletedMessage}</p>
+            <button
+              onClick={onLeaveRoom}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

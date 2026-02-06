@@ -62,6 +62,7 @@ export class RoomsController {
     @CurrentUser() user: User,
   ): Promise<void> {
     await this.roomsService.delete(id, user.id);
+    this.chatGateway.broadcastRoomDeleted(id);
   }
 
   @Post(':id/join')
