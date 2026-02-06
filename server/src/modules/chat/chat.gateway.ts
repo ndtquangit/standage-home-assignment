@@ -360,6 +360,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.in(`room:${roomId}`).socketsLeave(`room:${roomId}`);
   }
 
+  broadcastUserJoined(data: {
+    roomId: string;
+    userId: string;
+    nickname: string;
+  }): void {
+    this.server.to(`room:${data.roomId}`).emit('room:user_joined', data);
+  }
+
+  broadcastUserLeft(data: {
+    roomId: string;
+    userId: string;
+    nickname: string;
+  }): void {
+    this.server.to(`room:${data.roomId}`).emit('room:user_left', data);
+  }
+
   broadcastToRoom(roomId: string, event: string, payload: unknown): void {
     this.server.to(`room:${roomId}`).emit(event, payload);
   }

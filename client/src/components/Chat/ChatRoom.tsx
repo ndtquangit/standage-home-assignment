@@ -328,7 +328,10 @@ export default function ChatRoom({ roomId, onLeaveRoom }: ChatRoomProps) {
             </h2>
             <p className="text-gray-600 mb-6">{roomDeletedMessage}</p>
             <button
-              onClick={onLeaveRoom}
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ['rooms'] });
+                onLeaveRoom();
+              }}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
             >
               OK

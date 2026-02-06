@@ -72,6 +72,11 @@ export class RoomsController {
     @CurrentUser() user: User,
   ): Promise<void> {
     await this.roomsService.joinRoom(id, user.id);
+    this.chatGateway.broadcastUserJoined({
+      roomId: id,
+      userId: user.id,
+      nickname: user.nickname,
+    });
   }
 
   @Post(':id/leave')
@@ -81,6 +86,11 @@ export class RoomsController {
     @CurrentUser() user: User,
   ): Promise<void> {
     await this.roomsService.leaveRoom(id, user.id);
+    this.chatGateway.broadcastUserLeft({
+      roomId: id,
+      userId: user.id,
+      nickname: user.nickname,
+    });
   }
 
   @Get(':id/participants')
